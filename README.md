@@ -12,7 +12,7 @@ A9LL employs block-based spatial prediction. Sequences are segmented into 16x16 
 
 ## Layout
 
-- `c/` - Reference C++ implementation (requires `libpng`, `libjpeg`)
+- `cpp/` - Reference C++ implementation (requires `libpng`, `libjpeg`)
 - `go/` - Native Go port 
 - `rust/` - Native Rust port
 - `python/` - Python port (requires `Pillow`)
