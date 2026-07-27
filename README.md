@@ -4,9 +4,6 @@ Encoder for Samsung's Qmage (`.qmg`) boot-animation and still-image format.
 Built by reverse-engineering the bitstream against Peter Ross's FFmpeg
 decoder patch and validated against real on-device samples.
 
-See [`../TRANSCRIPT.md`](../TRANSCRIPT.md) for the full investigation log,
-including the hardware `-9` predictor-bounds fix.
-
 ## Building
 
 With CMake (preferred):
@@ -53,8 +50,6 @@ src/              library implementation
   image.cpp       PNG/JPEG loading, RGB565 conversion
 tools/            qmgc CLI
 ```
-
-Pair with [`../qmgd_repo`](../qmgd_repo) to decode and verify output locally.
 
 ## License
 
