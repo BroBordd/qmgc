@@ -1,0 +1,9 @@
+build/
+*.o
+*.a
+*.so
+qmgc
+*.qmg
+.vscode/
+.idea/
+*.DS_Store

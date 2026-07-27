@@ -1,18 +1,62 @@
 # qmgc
 
-qmgc (Qmage Compiler) is an experimental suite for compiling standard image assets into Samsung's proprietary Qmage (QMG) binary formats. Use at your own risk.
+Encoder for Samsung's Qmage (`.qmg`) boot-animation and still-image format.
+Built by reverse-engineering the bitstream against Peter Ross's FFmpeg
+decoder patch and validated against real on-device samples.
 
-## Implementation Details
+See [`../TRANSCRIPT.md`](../TRANSCRIPT.md) for the full investigation log,
+including the hardware `-9` predictor-bounds fix.
 
-The compiler outputs W2 structures for static images and A9LL structures for animations. 
+## Building
 
-W2 operates on an RGB565 plane. It generates a dynamic symbol palette derived from localized frequency grouping, which is encoded over interleaved index and run-length bitstreams. Lookup misses bypass the LUT natively as 32-bit interleaved raw literals. 
+With CMake (preferred):
 
-A9LL employs block-based spatial prediction. Sequences are segmented into 16x16 macroblocks, subdivided into 4x4 coordinate grids. Spatiotemporal differentials between blocks are quantized against a deterministic 256-entry lookup table. Bit-depths vary adaptively per block based on correlation. Edge propagations bypass residual encoding.
+```sh
+cmake -B build
+cmake --build build
+./build/qmgc frame0.png frame1.png out.qmg
+```
 
-## Layout
+Without CMake:
 
-- `cpp/` - Reference C++ implementation (requires `libpng`, `libjpeg`)
-- `go/` - Native Go port 
-- `rust/` - Native Rust port
-- `python/` - Python port (requires `Pillow`)
+```sh
+sh build.sh
+./qmgc frame0.png frame1.png out.qmg
+```
+
+Requires **libpng-dev**. JPEG input needs **libjpeg-dev** (optional; PNG-only
+builds work without it).
+
+## Usage
+
+```sh
+qmgc [--delay N] [--force-animation] [--scale WxH] input... output.qmg
+```
+
+- One PNG/JPEG input → still image (W2_PASS, qversion 0x0b)
+- Multiple inputs, or `--force-animation` → A9LL animation (qversion 0x0f)
+- `--delay N` — per-frame delay field in the animation header (centiseconds)
+- `--scale WxH` — resize all inputs before encoding
+
+## Repo layout
+
+```
+include/qmgc/     public headers (encode.h, image.h, types.h)
+src/              library implementation
+  tables.h        residual delta table, prediction direction vectors
+  bitwriter.h     MSB-first bit packing (matches decoder)
+  predict.h       mode selection + Samsung hardware OOB predictor rules
+  residual.*      O(1) residual lookup table
+  encode_w2.*     still-image W2_PASS encoder
+  encode_a9ll.*   animation A9LL keyframe + delta encoder
+  encode.cpp      top-level encode_still / encode_animation
+  image.cpp       PNG/JPEG loading, RGB565 conversion
+tools/            qmgc CLI
+```
+
+Pair with [`../qmgd_repo`](../qmgd_repo) to decode and verify output locally.
+
+## License
+
+GPLv3 (or later) — see [`LICENSE`](LICENSE). Codec tables and bitstream
+logic are derived from FFmpeg's LGPL-2.1-or-later `qmagedec.c`/`qmagedata.h`.
