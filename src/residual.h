@@ -16,7 +16,8 @@ struct ResidualChoice {
 };
 
 void init_resid_lut();
-std::optional<std::pair<uint8_t, uint16_t>> best_residual(uint16_t pred, uint16_t actual);
+// legacy == true selects the qversion 0x0b residual table, false the qversion 0x0f one.
+std::optional<std::pair<uint8_t, uint16_t>> best_residual(uint16_t pred, uint16_t actual, bool legacy);
 
 } // namespace detail
 } // namespace qmgc

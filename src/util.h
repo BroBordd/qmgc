@@ -45,6 +45,10 @@ inline void put_u16le_at(std::vector<uint8_t>& out, size_t off, uint16_t v) {
     out[off + 1] = static_cast<uint8_t>((v >> 8) & 0xFF);
 }
 
+inline void put_u32le_at(std::vector<uint8_t>& out, size_t off, uint32_t v) {
+    for (int i = 0; i < 4; ++i) out[off + i] = static_cast<uint8_t>((v >> (8 * i)) & 0xFF);
+}
+
 template <typename Fn>
 inline void parallel_for(int n, Fn&& fn) {
     if (n <= 0) return;
