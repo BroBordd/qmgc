@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 using namespace qmgc;
@@ -54,18 +55,38 @@ int main(int argc, char** argv) {
     positional.pop_back();
     inputs = positional;
     try {
-        std::vector<Image> loaded(inputs.size());
-        detail::parallel_for(static_cast<int>(inputs.size()), [&](int i) { loaded[i] = load_image(inputs[i]); });
-        if (scale_w > 0 && scale_h > 0) {
-            for (auto& im : loaded) im = scale_image(im, scale_w, scale_h);
-        }
-        std::vector<uint8_t> data;
-        if (force_animation || loaded.size() > 1) {
-            data = encode_animation(loaded, delay, qversion);
+        auto get_frame = [&](int i) -> Image {
+            Image im = load_image(inputs[i]);
+            if (scale_w > 0 && scale_h > 0) im = scale_image(im, scale_w, scale_h);
+            return im;
+        };
+        if (force_animation || inputs.size() > 1) {
+            // Streamed: frames are loaded, encoded and written a few at a time,
+            // so memory does not grow with the number of input images.
+            FILE* out = std::fopen(output.c_str(), "wb");
+            if (!out) return 1;
+            StreamSink sink;
+            bool io_ok = true;
+            sink.write = [&](const uint8_t* d, size_t n) {
+                if (std::fwrite(d, 1, n, out) != n) { io_ok = false; throw QmgError("write failed"); }
+            };
+            sink.reset = [&]() {
+                std::fflush(out);
+                std::rewind(out);
+                if (ftruncate(fileno(out), 0) != 0) { io_ok = false; throw QmgError("cannot truncate output"); }
+            };
+            try {
+                encode_animation_stream(static_cast<int>(inputs.size()), get_frame, delay, sink, qversion);
+            } catch (...) {
+                std::fclose(out);
+                std::remove(output.c_str());
+                throw;
+            }
+            if (std::fclose(out) != 0 || !io_ok) { std::remove(output.c_str()); return 1; }
         } else {
-            data = encode_still(loaded[0]);
+            std::vector<uint8_t> data = encode_still(get_frame(0));
+            if (!detail::write_file(output, data)) return 1;
         }
-        if (!detail::write_file(output, data)) return 1;
     } catch (const std::exception& e) { std::fprintf(stderr, "error: %s\n", e.what());
         return 1;
     }
